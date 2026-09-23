@@ -14,7 +14,7 @@ jobs:
     env:
       MF_OFFLINE: "1"          # tests use demo data; no network or secrets needed
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
