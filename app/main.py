@@ -12,8 +12,9 @@ from dataclasses import asdict, is_dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
+import requests
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -32,6 +33,13 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 app.include_router(broker_router)
 app.include_router(mail_router)
 init_db()
+
+
+@app.exception_handler(requests.RequestException)
+def nav_source_unavailable(request, exc):
+    # AMFI / mfapi.in didn't answer even after retries; don't show a bare 500.
+    return JSONResponse(status_code=503, content={
+        "detail": "Fund prices are temporarily unavailable. Please try again in a minute."})
 
 
 # ------------------------------------------------------------ helpers

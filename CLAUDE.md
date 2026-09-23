@@ -43,7 +43,7 @@ Primary target user: retail investors who find Groww/Kuvera/INDmoney too shallow
 - Account Aggregator is the long-term path but needs a regulated (RBI/SEBI) partner.
 
 ## Commands
-- `make test` — 27 tests, offline demo data, must stay green
+- `make test` — 31 tests, offline demo data, must stay green
 - `make lint` — ruff error rules (same as CI)
 - `make demo` / `make run` (live, reads `.env`; see `.env.example`)
 - CI: `.github/workflows/ci.yml` runs lint + tests on 3.11/3.12 for every push/PR
@@ -55,8 +55,10 @@ Primary target user: retail investors who find Groww/Kuvera/INDmoney too shallow
   without explanation.
 
 ## Known gaps / not yet verified
-- Live AMFI/mfapi fetch, real CAS PDFs, real Kite and Gmail accounts have NOT been
-  tested end to end (dev sandbox had no access). Verify these first.
+- Live AMFI + mfapi.in verified 2026-09-23 (AMFI NAVAll.txt is now 8 columns: Plan and
+  Option split out). mfapi.in intermittently hangs ~60s and lags AMFI by a few days;
+  `_cached_get` retries and falls back to stale cache, API returns 503.
+- Real CAS PDFs, real Kite and Gmail accounts have NOT been tested end to end. Verify next.
 - `STATEMENT_SENDERS` in `app/mail/gmail.py` are best guesses; confirm against real emails.
 - Coin MFs are demat; a CAMS CAS may omit them → possible double count if a user
   uses both Zerodha sync and a CDSL/NSDL CAS for the same fund.

@@ -76,3 +76,17 @@ def test_future_date_rejected():
     r = client.post("/api/transactions", headers=h,
                     json={"scheme_code": "900001", "txn_date": (date.today() + timedelta(days=5)).isoformat(), "amount": 100})
     assert r.status_code == 400
+
+
+def test_nav_source_down_is_friendly_503(monkeypatch):
+    import requests
+    from app import navs
+
+    def down(code, when):
+        raise requests.ReadTimeout("mfapi.in hung")
+
+    monkeypatch.setattr(navs, "nav_on", down)
+    r = client.post("/api/transactions", headers=auth("down@example.com"),
+                    json={"scheme_code": "900001", "txn_date": "2025-01-06", "amount": 5000})
+    assert r.status_code == 503
+    assert "temporarily unavailable" in r.json()["detail"]
