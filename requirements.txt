@@ -1,6 +1,6 @@
 pandas>=2.1
 numpy>=1.26
-requests>=2.31
+requests>=2.34.2
 fastapi>=0.110
 uvicorn>=0.29
 python-multipart>=0.0.9
