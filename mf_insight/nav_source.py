@@ -99,14 +99,14 @@ def parse_amfi_navall(text: str) -> list[Scheme]:
 
 
 class AmfiLatest:
-    def fetch(self) -> list[Scheme]:
-        return parse_amfi_navall(_cached_get(AMFI_NAV_URL, "NAVAll.txt"))
+    def fetch(self, max_age_hours: float = 12) -> list[Scheme]:
+        return parse_amfi_navall(_cached_get(AMFI_NAV_URL, "NAVAll.txt", max_age_hours))
 
 
 class MfapiHistory:
-    def fetch(self, scheme_code: str) -> tuple[pd.Series, dict]:
+    def fetch(self, scheme_code: str, max_age_hours: float = 12) -> tuple[pd.Series, dict]:
         """Return (NAV series, scheme meta)."""
-        text = _cached_get(MFAPI_URL.format(code=scheme_code), f"mfapi_{scheme_code}.json")
+        text = _cached_get(MFAPI_URL.format(code=scheme_code), f"mfapi_{scheme_code}.json", max_age_hours)
         payload = json.loads(text)
         return parse_mfapi(payload), payload.get("meta", {})
 

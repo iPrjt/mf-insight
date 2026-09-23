@@ -159,7 +159,7 @@ def fund_metrics(code: str, years: float = 3.0, user=Depends(current_user)):
         nav = navs.nav_history(code)
     except KeyError:
         raise HTTPException(404, "No NAV history found for this fund.")
-    m = M.compute_fund_metrics(nav, navs.benchmark(), years=years)
+    m = navs.fund_metrics(code) if years == 3.0 else M.compute_fund_metrics(nav, navs.benchmark(), years=years)
     return {"fund": navs.meta(code), "metrics": clean(m)}
 
 
@@ -236,10 +236,9 @@ def portfolio(user=Depends(current_user)):
 
     fund_metrics = {}
     if ent["per_fund_metrics"]:
-        bench = navs.benchmark()
         for h in holdings:
             try:
-                fund_metrics[h.scheme_code] = M.compute_fund_metrics(p.navs[h.scheme_code], bench)
+                fund_metrics[h.scheme_code] = navs.fund_metrics(h.scheme_code)
             except Exception:
                 pass  # too little history for this fund
 

@@ -3,7 +3,8 @@ NAV provider used by the API.
 
 MF_OFFLINE=1  -> built-in demo schemes with simulated NAVs (no network;
                  used by tests and for UI work).
-otherwise     -> AMFI scheme master + mfapi.in NAV history (cached).
+otherwise     -> AMFI scheme master; NAV history from our own store
+                 (app/navstore.py), backfilled from mfapi.in on first use.
 
 BENCHMARK_CODE -> scheme code of a Nifty 50 index fund used as the
                   benchmark proxy until licensed index data is added.
@@ -13,6 +14,10 @@ from functools import lru_cache
 
 import numpy as np
 import pandas as pd
+
+from mf_insight import metrics as M
+
+from . import navstore
 
 OFFLINE = os.environ.get("MF_OFFLINE") == "1"
 BENCHMARK_CODE = os.environ.get("BENCHMARK_CODE", "")
@@ -29,6 +34,7 @@ _DAYS = pd.bdate_range(end=pd.Timestamp.today().normalize(), periods=252 * 7)
 _MARKET = np.random.default_rng(33).normal(0.12 / 252, 0.14 / 252 ** 0.5, len(_DAYS))
 
 
+@lru_cache(maxsize=16)
 def _demo_nav(code: str) -> pd.Series:
     _, _, beta, alpha, idio = DEMO_SCHEMES[code]
     noise = np.random.default_rng(int(code)).normal(0, idio / 252 ** 0.5, len(_DAYS))
@@ -81,17 +87,41 @@ def meta(code: str) -> dict:
     return scheme_master().get(code, {"code": code, "name": code, "category": ""})
 
 
-@lru_cache(maxsize=512)
+def backfill(code: str, fresh: bool = False) -> None:
+    """Copy a scheme's full history from mfapi.in into our NAV store."""
+    from mf_insight.nav_source import MfapiHistory
+    nav, _ = MfapiHistory().fetch(code, max_age_hours=0 if fresh else 12)
+    if nav.empty:
+        raise KeyError(code)
+    navstore.save(code, nav)
+    navstore.mark_backfilled(code)
+
+
+_loaded: dict[str, tuple[str, pd.Series]] = {}   # code -> (last stored date, series)
+
+
 def nav_history(code: str) -> pd.Series:
     if OFFLINE:
         if code not in DEMO_SCHEMES:
             raise KeyError(code)
         return _demo_nav(code)
-    from mf_insight.nav_source import MfapiHistory
-    nav, _ = MfapiHistory().fetch(code)
-    if nav.empty:
-        raise KeyError(code)
-    return with_latest(nav, scheme_master().get(code, {}))
+    if navstore.backfilled_at(code) is None:
+        backfill(code)          # first time anyone holds this fund
+    last = navstore.last_date(code)
+    hit = _loaded.get(code)
+    if hit and hit[0] == last:
+        return hit[1]           # nothing new since the nightly job last ran
+    nav = with_latest(navstore.load(code), scheme_master().get(code, {}))
+    _loaded[code] = (last, nav)
+    return nav
+
+
+def fund_metrics(code: str):
+    """3-year metrics against the benchmark, precomputed by the nightly job."""
+    nav, bench = nav_history(code), benchmark()
+    if OFFLINE:
+        return M.compute_fund_metrics(nav, bench)
+    return navstore.cached_metrics(code, nav, BENCHMARK_CODE if bench is not None else "", bench)
 
 
 def benchmark() -> pd.Series | None:

@@ -59,6 +59,23 @@ CREATE TABLE IF NOT EXISTS mail_imports (
     processed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, message_id)
 );
+CREATE TABLE IF NOT EXISTS nav_history (
+    scheme_code TEXT NOT NULL,
+    nav_date TEXT NOT NULL,             -- ISO date
+    nav REAL NOT NULL,
+    PRIMARY KEY (scheme_code, nav_date)
+);
+CREATE TABLE IF NOT EXISTS nav_backfills (
+    scheme_code TEXT PRIMARY KEY,       -- full history fetched from mfapi.in at this time (UTC)
+    backfilled_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS fund_metrics (
+    scheme_code TEXT NOT NULL,
+    benchmark_code TEXT NOT NULL,
+    as_of TEXT NOT NULL,                -- "<fund last NAV date>|<benchmark last NAV date>"
+    metrics TEXT NOT NULL,              -- FundMetrics as JSON
+    PRIMARY KEY (scheme_code, benchmark_code)
+);
 CREATE TABLE IF NOT EXISTS oauth_states (
     state TEXT PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),

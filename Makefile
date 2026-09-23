@@ -1,4 +1,4 @@
-.PHONY: install test lint demo run check-mail
+.PHONY: install test lint demo run check-mail update-navs
 install:     ## install dependencies
 	pip install -r requirements.txt ruff
 test:        ## run the test suite (demo data, no network)
@@ -11,3 +11,5 @@ run:         ## run with live AMFI data (reads .env)
 	uvicorn app.main:app --reload --env-file .env
 check-mail:  ## import new statements from connected Gmail accounts
 	python -m app.jobs check-mail
+update-navs: ## store today's AMFI NAVs, refresh held funds, precompute metrics
+	python -m app.jobs update-navs

@@ -25,8 +25,12 @@ Primary target user: retail investors who find Groww/Kuvera/INDmoney too shallow
   `app/static/index.html`.
 - `app/plans.py` — Free / Pro ₹149 / Premium ₹399. Gate features with
   `plans.require(user, feature)`; 402 = upgrade prompt. Never check plan names inline.
-- `app/navs.py` — AMFI scheme master + mfapi.in NAV history; `MF_OFFLINE=1` uses
+- `app/navs.py` — AMFI scheme master + NAV history; `MF_OFFLINE=1` uses
   6 simulated demo funds (codes 900001–900006, ISINs INFDEMO0000N).
+- `app/navstore.py` — our own `nav_history` + cached `fund_metrics` tables. A fund is
+  backfilled from mfapi.in the first time anyone holds it; `make update-navs` (nightly
+  cron, ~23:30) stores every scheme's AMFI NAV, re-fetches held funds weekly and warms
+  metrics. Dashboards read only from the DB, so they work while mfapi.in is down.
 
 ## Data sources and why
 - **Zerodha**: Kite Connect OAuth, `/mf/holdings` only (Coin funds). Gives units +
@@ -43,9 +47,10 @@ Primary target user: retail investors who find Groww/Kuvera/INDmoney too shallow
 - Account Aggregator is the long-term path but needs a regulated (RBI/SEBI) partner.
 
 ## Commands
-- `make test` — 36 tests, offline demo data, must stay green
+- `make test` — 40 tests, offline demo data, must stay green
 - `make lint` — ruff error rules (same as CI)
 - `make demo` / `make run` (live, reads `.env`; see `.env.example`)
+- `make update-navs` / `make check-mail` — the two cron jobs (`app/jobs.py`)
 - CI: `.github/workflows/ci.yml` runs lint + tests on 3.11/3.12 for every push/PR
 
 ## Working agreements
@@ -72,7 +77,7 @@ Primary target user: retail investors who find Groww/Kuvera/INDmoney too shallow
 ## Roadmap (next)
 1. Test live mode + real CAS + real Gmail; fix issues found
 2. Razorpay/Cashfree subscriptions via verified webhooks
-3. Nightly NAV history store + precomputed metrics
+3. ~~Nightly NAV history store + precomputed metrics~~ (done; needs a scheduler once deployed)
 4. Category medians/quartiles → "below category median" insights
 5. AMC monthly holdings → fund overlap insights
 6. Postgres + Docker Compose deploy
