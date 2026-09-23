@@ -9,12 +9,15 @@ Broker snapshot estimates (Zerodha opening/sync rows) for a fund are
 removed once real statement history for that fund arrives.
 """
 import io
+import logging
 
 from fastapi import HTTPException
 
 from . import cas, navs
 from .db import connect
 from .secrets_box import decrypt
+
+log = logging.getLogger(__name__)
 
 
 class StatementError(Exception):
@@ -32,11 +35,16 @@ def import_rows(user_id: int, rows: list[dict]) -> dict:
         for code in codes - set(unknown):
             c.execute("DELETE FROM transactions WHERE user_id=? AND scheme_code=? "
                       "AND (source LIKE '%opening' OR source LIKE '%sync')", (user_id, code))
+        # Two SIPs of the same amount on the same day are two real transactions, so
+        # count matches: only rows beyond those already stored are new.
+        seen: dict[tuple, int] = {}
         for r in rows:
-            dup = c.execute("SELECT 1 FROM transactions WHERE user_id=? AND scheme_code=? AND txn_date=? "
-                            "AND source='cas' AND ABS(units-?) < 0.0005",
-                            (user_id, r["scheme_code"], r["txn_date"].isoformat(), r["units"])).fetchone()
-            if dup:
+            key = (r["scheme_code"], r["txn_date"].isoformat(), round(r["units"], 3))
+            seen[key] = seen.get(key, 0) + 1
+            stored = c.execute("SELECT COUNT(*) FROM transactions WHERE user_id=? AND scheme_code=? AND txn_date=? "
+                               "AND source='cas' AND ABS(units-?) < 0.0005",
+                               (user_id, key[0], key[1], r["units"])).fetchone()[0]
+            if seen[key] <= stored:
                 continue
             c.execute("INSERT INTO transactions(user_id,scheme_code,txn_date,amount,units,source) "
                       "VALUES (?,?,?,?,?,'cas')",
@@ -50,10 +58,13 @@ def import_rows(user_id: int, rows: list[dict]) -> dict:
 def process_pdf(user_id: int, pdf: bytes, password: str) -> dict:
     try:
         data = cas.parse_pdf(io.BytesIO(pdf), password)
+    except ImportError:
+        raise  # a missing parser library is a server problem, not a bad statement
     except Exception as e:
         msg = str(e).lower()
         if "password" in msg or "decrypt" in msg:
-            raise StatementError("password", "The PDF password is incorrect. It's usually your PAN in capital letters.")
+            raise StatementError("password", "The PDF password is incorrect. Use the password you set when requesting the statement (for NSDL or CDSL statements, your PAN in capital letters).")
+        log.warning("CAS parse failed: %s: %s", type(e).__name__, e)
         raise StatementError("unreadable", "This PDF couldn't be read as a CAS.")
     rows, skipped = cas.extract_transactions(data)
     if not rows:

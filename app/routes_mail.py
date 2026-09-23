@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from . import navs, statements
 from .auth import current_user
 from .db import connect
-from .mail.gmail import FakeGmailClient, GmailAuthError, GmailClient, STATEMENT_SENDERS
+from .mail.gmail import FakeGmailClient, GmailAuthError, GmailClient, STATEMENT_SENDERS, is_statement_subject
 from .secrets_box import decrypt, encrypt
 
 router = APIRouter(prefix="/api")
@@ -205,6 +205,8 @@ async def inbound_email(request: Request):
 
     if not _sender_ok(sender):
         return {"ignored": "sender is not a statement provider"}
+    if not is_statement_subject(subject):
+        return {"ignored": "not a statement (e.g. a transaction receipt)"}
     pdfs = [await v.read() for v in form.values()
             if hasattr(v, "filename") and (v.filename or "").lower().endswith(".pdf")]
     results = [statements.process_automatic(user_id, pdf, "forward", f"fwd:{msg_id}:{i}", subject)

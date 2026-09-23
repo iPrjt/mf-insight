@@ -111,3 +111,31 @@ def test_real_gmail_client_parsing():
     mails = g.find_statements("tok", {"seen"})
     assert len(mails) == 1 and mails[0].pdfs == [pdf] and mails[0].subject == "Your CAS"
     assert "gmail.readonly" in GmailClient().login_url("s") and "access_type=offline" in GmailClient().login_url("s")
+
+
+def test_missing_cas_library_is_not_reported_as_bad_pdf(monkeypatch):
+    import pytest
+    from app import cas, statements
+
+    def no_lib(fileobj, password):
+        raise ModuleNotFoundError("No module named 'casparser'")
+
+    monkeypatch.setattr(cas, "parse_pdf", no_lib)
+    with pytest.raises(ImportError):
+        statements.process_pdf(1, b"%PDF-1.4", "pw")
+
+
+def test_only_statement_subjects_are_imported():
+    from app.mail.gmail import is_statement_subject
+    # both seen in a real inbox, from camsonline.com with a PDF attached
+    assert is_statement_subject("Consolidated Account Statement - CAMS Mailback Request")
+    assert not is_statement_subject("Redemption Transaction confirmation/ Folio no: XXXXXXX5502 - TSD1")
+    assert is_statement_subject("NSDL e-CAS for August 2026") and is_statement_subject("Your CAS")
+    assert not is_statement_subject("Casual update")
+
+    h = auth("receipt@example.com")
+    addr = client.get("/api/mail", headers=h).json()["forwarding"]["address"]
+    r = client.post("/api/inbound/email", data={"recipient": addr, "sender": "donotreply@camsonline.com",
+                    "subject": "Redemption Transaction confirmation/ Folio no: XXXXXXX5502"},
+                    files={"attachment-1": ("r.pdf", FakeGmailClient.DEMO_PDF, "application/pdf")}).json()
+    assert "not a statement" in r["ignored"]

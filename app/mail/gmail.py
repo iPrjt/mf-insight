@@ -10,6 +10,7 @@ Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
 """
 import base64
 import os
+import re
 from dataclasses import dataclass
 from urllib.parse import urlencode
 
@@ -26,10 +27,20 @@ SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 STATEMENT_SENDERS = ["camsonline.com", "kfintech.com", "mfcentral.com", "nsdl.co.in", "cdslindia.com", "cdslindia.co.in"]
 
 
+# The same senders also email transaction receipts ("Redemption Transaction
+# confirmation") with PDFs; only statement subjects are imported.
+STATEMENT_SUBJECT = re.compile(r"consolidated account statement|\be-?cas\b|\bcas\b", re.I)
+
+
+def is_statement_subject(subject: str) -> bool:
+    return bool(STATEMENT_SUBJECT.search(subject or ""))
+
+
 def statement_query(newer_than: str = "2y") -> str:
     senders = " OR ".join(f"from:{d}" for d in STATEMENT_SENDERS)
     return (f'has:attachment filename:pdf newer_than:{newer_than} '
-            f'({senders} OR subject:"Consolidated Account Statement")')
+            f'({senders} OR subject:"Consolidated Account Statement") '
+            f'(subject:"Consolidated Account Statement" OR subject:CAS OR subject:eCAS)')
 
 
 @dataclass
@@ -104,6 +115,8 @@ class GmailClient:
                 continue
             msg = self._get(token, f"/messages/{m['id']}", format="full")
             headers = {h["name"].lower(): h["value"] for h in msg["payload"].get("headers", [])}
+            if not is_statement_subject(headers.get("subject", "")):
+                continue
             pdfs = [self._attachment(token, m["id"], p) for p in _pdf_parts(msg["payload"])]
             if pdfs:
                 out.append(StatementMail(m["id"], headers.get("subject", ""), pdfs))

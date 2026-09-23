@@ -4,7 +4,7 @@ library. Works for funds bought on ANY platform, including Groww, whose
 official API does not expose mutual fund holdings.
 
 Download a *detailed* CAS from CAMS, KFintech or MF Central. The PDF
-password is usually the PAN. Manual uploads use it once; automatic imports
+password is the one chosen when requesting it (PAN for NSDL/CDSL). Manual uploads use it once; automatic imports
 use the encrypted copy the user chose to save (see statements.py).
 """
 from datetime import date
