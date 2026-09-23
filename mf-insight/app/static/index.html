@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MF Insight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF2EF; --surface:#FFFFFF; --ink:#16302B; --muted:#5F6F6A; --line:#D5DDD8;
+  --accent:#1F6F5C; --accent-soft:#DCEBE5; --loss:#A23B2A; --watch:#8A6100; --watch-soft:#F4EAD2;
+  --radius-lg:14px; --radius-sm:6px;
+  font-family:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg);
+  font-variant-numeric:tabular-nums;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0F1C19; --surface:#16261F; --ink:#E4ECE8; --muted:#95A7A0; --line:#2A3D36;
+  --accent:#5CC2A3; --accent-soft:#1D3A31; --loss:#E0806F; --watch:#E0B653; --watch-soft:#3A3120;
+}}
+*{box-sizing:border-box} body{margin:0;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:20px}
+header{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:8px 0 24px}
+.brand{font-weight:700;font-size:1.1rem;letter-spacing:-.01em}
+.plan{border:1px solid var(--line);border-radius:999px;padding:2px 12px;font-size:.85rem;color:var(--muted)}
+.plan b{color:var(--accent);text-transform:capitalize}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--radius-sm);padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media (prefers-color-scheme:dark){.btn.primary{color:#0F1C19}}
+.btn.link{border:none;background:none;color:var(--muted);text-decoration:underline;padding:4px}
+.hidden{display:none!important}
+
+/* hero: the portfolio stated as a sentence */
+.hero{font-size:clamp(1.5rem,3.4vw,2.35rem);line-height:1.25;font-weight:500;letter-spacing:-.02em;max-width:26ch;margin:0 0 10px}
+.hero strong{font-weight:700}
+.hero .neg{color:var(--loss)}
+.sub{color:var(--muted);max-width:70ch;margin:0 0 28px}
+
+section{margin-bottom:36px}
+h2{font-size:1.1rem;margin:0 0 12px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px}
+
+/* holdings */
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:.85rem;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:12px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right}
+.fname{font-weight:500} .fcat{color:var(--muted);font-size:.82rem}
+.neg{color:var(--loss)}
+
+/* the Sortino strip: 0..3+ scale with thresholds at 1 (good), 2 (strong), 3 (excellent) */
+.strip{position:relative;width:150px;height:22px}
+.strip .track{position:absolute;inset:9px 0;border-radius:2px;
+  background:linear-gradient(90deg,var(--line) 0 33.33%,var(--accent-soft) 33.33% 66.66%,color-mix(in srgb,var(--accent) 45%,var(--accent-soft)) 66.66%)}
+.strip .tick{position:absolute;top:5px;width:1px;height:12px;background:var(--muted);opacity:.5}
+.strip .dot{position:absolute;top:4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.strip .dot.low{background:var(--loss)}
+.sval{font-weight:600;min-width:3.2em;display:inline-block;text-align:right}
+.metric-row{display:flex;align-items:center;gap:10px}
+.locked{color:var(--muted);font-size:.85rem}
+
+/* insights */
+.insights{display:grid;gap:10px}
+.insight{border-left:3px solid var(--line);padding:6px 0 6px 12px}
+.insight.watch{border-color:var(--watch)} .insight.attention{border-color:var(--loss)}
+.insight h3{font-size:.98rem;margin:0 0 2px;font-weight:600}
+.insight p{margin:0;color:var(--muted);max-width:75ch}
+
+/* forms */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+label{display:block;font-size:.88rem;color:var(--muted);margin:10px 0 4px}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.results{border:1px solid var(--line);border-radius:var(--radius-sm);margin-top:4px;max-height:210px;overflow:auto;background:var(--surface)}
+.results button{display:block;width:100%;text-align:left;border:none;background:none;padding:8px 10px;cursor:pointer}
+.results button:hover,.results button:focus-visible{background:var(--accent-soft)}
+.msg{font-size:.88rem;margin-top:8px} .msg.err{color:var(--loss)} .msg.ok{color:var(--accent)}
+.row{display:flex;gap:10px;align-items:end} .row>*{flex:1}
+
+/* auth */
+.auth{max-width:380px;margin:12vh auto 0}
+.auth h1{font-size:1.9rem;letter-spacing:-.02em;margin:0 0 6px}
+
+/* upgrade */
+.upsell{background:var(--watch-soft);border-radius:var(--radius-lg);padding:14px 18px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:760px){.plans{grid-template-columns:1fr}}
+.plan-card{border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px}
+.plan-card.current{border-color:var(--accent);border-width:2px}
+.plan-card h3{margin:0;text-transform:capitalize}
+.price{font-size:1.5rem;font-weight:700;margin:4px 0 8px}
+.plan-card ul{padding-left:18px;margin:0 0 12px;color:var(--muted);font-size:.9rem}
+.note{color:var(--muted);font-size:.82rem;margin-top:10px}
+.accounts{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.accounts{grid-template-columns:1fr}}
+.acct h3{margin:0 0 2px;font-size:1.05rem}
+.acct .state{font-size:.88rem;color:var(--muted);margin:0 0 12px}
+.acct .state.on{color:var(--accent)} .acct .state.off{color:var(--watch)}
+.acct .actions{display:flex;gap:8px;flex-wrap:wrap}
+.banner{border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:18px;background:var(--accent-soft)}
+.banner.err{background:var(--watch-soft)}
+.tag{font-size:.78rem;color:var(--watch);white-space:nowrap}
+.addr{display:flex;gap:8px;align-items:center;margin:6px 0 10px}
+.addr code{flex:1;padding:8px 10px;border:1px dashed var(--line);border-radius:var(--radius-sm);font-size:.92rem;overflow-x:auto;white-space:nowrap}
+.checkbox{display:flex;gap:8px;align-items:flex-start;color:var(--ink);font-size:.9rem;margin:10px 0}
+.checkbox input{width:auto;margin-top:4px}
+ol.howto{margin:6px 0 0;padding-left:20px;color:var(--muted);font-size:.9rem}
+.log{list-style:none;padding:0;margin:0;font-size:.9rem}
+.log li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.log li:last-child{border-bottom:none}
+.log .st-imported{color:var(--accent)} .log .st-needs_password,.log .st-failed{color:var(--watch)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- Sign in -->
+<div id="authView" class="wrap hidden">
+  <div class="auth">
+    <h1>MF Insight</h1>
+    <p class="sub">See how much return your mutual funds deliver for the risk they take.</p>
+    <form id="authForm" class="panel">
+      <label for="email">Email</label><input id="email" type="email" required autocomplete="email">
+      <label for="password">Password</label><input id="password" type="password" minlength="8" required autocomplete="current-password">
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" type="submit" data-mode="login">Sign in</button>
+        <button class="btn" type="submit" data-mode="register">Create account</button>
+      </div>
+      <div id="authMsg" class="msg err"></div>
+    </form>
+  </div>
+</div>
+
+<!-- App -->
+<div id="appView" class="wrap hidden">
+  <header>
+    <span class="brand">MF Insight</span>
+    <span style="display:flex;gap:10px;align-items:center">
+      <button class="plan" id="planPill" type="button">Plan: <b id="planName">free</b></button>
+      <button class="btn link" id="signOut" type="button">Sign out</button>
+    </span>
+  </header>
+
+  <div id="banner" class="banner hidden" role="status"></div>
+  <section id="summary"></section>
+
+  <section id="upsell" class="hidden">
+    <div class="upsell">
+      <span>Pro shows Sortino, Sharpe, alpha and drawdown for every fund, compared against its benchmark.</span>
+      <button class="btn primary" type="button" id="upsellBtn">See plans</button>
+    </div>
+  </section>
+
+  <section id="holdingsSec" class="hidden">
+    <h2>Your funds</h2>
+    <div class="panel scroll"><table>
+      <thead><tr><th>Fund</th><th class="num">Value</th><th class="num">Weight</th><th class="num">XIRR</th><th>Sortino (3Y)</th><th class="num">Max fall</th></tr></thead>
+      <tbody id="holdingsBody"></tbody>
+    </table></div>
+    <p class="note">Sortino scale: 1 is good, 2 strong, 3 or more excellent. Compare funds within the same category.</p>
+  </section>
+
+  <section id="insightsSec" class="hidden">
+    <h2>Things to look at</h2>
+    <div class="insights" id="insightsList"></div>
+    <p class="note">These are observations about your portfolio, not recommendations to buy, sell or switch.</p>
+  </section>
+
+  <section>
+    <h2>Connected accounts</h2>
+    <div class="accounts">
+      <div class="panel acct">
+        <h3>Zerodha</h3>
+        <p class="state" id="zState">Checking…</p>
+        <div class="actions" id="zActions"></div>
+        <p class="note">You sign in on Zerodha's site. MF Insight only receives read access to your Coin mutual fund holdings, and Zerodha asks you to sign in again each day.</p>
+      </div>
+      <form class="panel acct" id="casForm">
+        <h3>Groww and other platforms</h3>
+        <p class="state">Import your statement</p>
+        <p class="note" style="margin-top:0">Groww doesn't share mutual fund holdings with other apps, so import your Consolidated Account Statement instead. It covers every fund you own, with full purchase history. Download a detailed CAS from CAMS, KFintech or MF Central.</p>
+        <label for="casFile">Statement PDF</label><input id="casFile" type="file" accept=".pdf" required>
+        <label for="casPwd">PDF password</label><input id="casPwd" type="password" required placeholder="Usually your PAN in capitals" autocomplete="off">
+        <p class="note">The password is only used to open this file. It isn't saved.</p>
+        <button class="btn primary" type="submit">Import statement</button>
+        <div id="casMsg" class="msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <section>
+    <h2>Automatic statement import</h2>
+    <p class="sub" style="margin-bottom:14px">New statements from CAMS, KFintech, MF Central, NSDL or CDSL are imported as they arrive, so funds bought on Groww stay up to date without uploading anything.</p>
+    <form class="panel" id="pwdForm" style="margin-bottom:18px">
+      <h3 style="margin:0 0 2px;font-size:1.05rem">Statement password</h3>
+      <p class="state" id="pwdState" style="margin:0 0 6px;font-size:.88rem;color:var(--muted)"></p>
+      <div class="row">
+        <div><label for="savedPwd">Password used to open your statements</label>
+        <input id="savedPwd" type="password" autocomplete="off" placeholder="Usually your PAN in capitals"></div>
+        <div style="flex:0 0 auto"><button class="btn primary" type="submit">Save</button></div>
+      </div>
+      <label class="checkbox"><input type="checkbox" id="pwdConsent"> <span>Store this password encrypted so MF Insight can open statements automatically. You can delete it any time.</span></label>
+      <button class="btn link hidden" type="button" id="pwdDelete">Delete saved password</button>
+      <div id="pwdMsg" class="msg"></div>
+    </form>
+    <div class="accounts">
+      <div class="panel acct">
+        <h3>Gmail</h3>
+        <p class="state" id="gState">Checking…</p>
+        <div class="actions" id="gActions"></div>
+        <p class="note">You approve access on Google's screen. MF Insight only searches for statement emails from the providers above and never sends mail. Your email password is never shared.</p>
+      </div>
+      <div class="panel acct">
+        <h3>Forwarding address</h3>
+        <p class="state">Works with any email provider, without giving inbox access.</p>
+        <div class="addr"><code id="fwdAddr">…</code><button class="btn" type="button" id="copyAddr">Copy</button></div>
+        <ol class="howto">
+          <li>In Gmail settings, open Forwarding and add this address.</li>
+          <li>Gmail sends a confirmation code here. It appears below within a minute.</li>
+          <li>Create a filter for emails from <span id="fwdSenders"></span> and choose "Forward it to" this address.</li>
+        </ol>
+        <p class="msg ok" id="fwdConfirm"></p>
+      </div>
+    </div>
+    <div class="panel" id="importLogWrap" style="margin-top:18px">
+      <h3 style="margin:0 0 6px;font-size:1.05rem">Recent automatic imports</h3>
+      <ul class="log" id="importLog"></ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Add investments</h2>
+    <div class="grid2">
+      <form class="panel" id="txnForm">
+        <label for="fundSearch">Fund</label>
+        <input id="fundSearch" placeholder="Type a fund name, e.g. flexi cap" autocomplete="off">
+        <div id="fundResults" class="results hidden" role="listbox"></div>
+        <input type="hidden" id="schemeCode">
+        <div class="row">
+          <div><label for="txnDate">Date</label><input id="txnDate" type="date" required></div>
+          <div><label for="txnAmount">Amount (₹)</label><input id="txnAmount" type="number" step="0.01" required placeholder="5000"></div>
+        </div>
+        <label for="txnUnits">Units (optional)</label>
+        <input id="txnUnits" type="number" step="0.0001" placeholder="Leave empty to use that day's NAV">
+        <p class="note">Use a negative amount for a redemption.</p>
+        <button class="btn primary" type="submit">Add investment</button>
+        <div id="txnMsg" class="msg"></div>
+      </form>
+      <form class="panel" id="csvForm">
+        <label for="csvFile">Import from CSV</label>
+        <input id="csvFile" type="file" accept=".csv" required>
+        <p class="note">Columns: scheme_code, date (YYYY-MM-DD), amount, and optionally units.</p>
+        <button class="btn" type="submit">Import file</button>
+        <div id="csvMsg" class="msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <section id="plansSec" class="hidden">
+    <h2>Plans</h2>
+    <div class="plans" id="plansGrid"></div>
+    <p class="note">Development build: choosing a plan activates it instantly. Payments are added in the billing step.</p>
+  </section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const inr = n => n == null ? "–" : "₹" + Math.round(n).toLocaleString("en-IN");
+const pct = n => n == null ? "–" : (n * 100).toFixed(1) + "%";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let token = null, me = null;
+try { token = localStorage.getItem("mfi_token"); } catch {}
+
+async function api(path, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (token) headers.Authorization = "Bearer " + token;
+  if (opts.json) { headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(opts.json); }
+  const res = await fetch(path, { ...opts, headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const detail = Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(", ") : data.detail;
+    throw Object.assign(new Error(detail || "Request failed."), { status: res.status });
+  }
+  return data;
+}
+
+function show(view) {
+  $("#authView").classList.toggle("hidden", view !== "auth");
+  $("#appView").classList.toggle("hidden", view !== "app");
+}
+
+// ---------- auth
+$("#authForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const mode = e.submitter?.dataset.mode || "login";
+  try {
+    const r = await api(`/api/auth/${mode}`, { method: "POST", json: { email: $("#email").value, password: $("#password").value } });
+    token = r.token; try { localStorage.setItem("mfi_token", token); } catch {}
+    boot();
+  } catch (err) { $("#authMsg").textContent = err.message; }
+});
+$("#signOut").onclick = () => { token = null; try { localStorage.removeItem("mfi_token"); } catch {} show("auth"); };
+
+// ---------- portfolio
+function sortinoStrip(v) {
+  if (v == null) return `<span class="locked">Not enough history</span>`;
+  const pos = Math.max(0, Math.min(v, 3)) / 3 * 100;
+  return `<div class="metric-row"><span class="sval">${v.toFixed(2)}</span>
+    <div class="strip" aria-label="Sortino ${v.toFixed(2)} on a 0 to 3 scale">
+      <div class="track"></div>
+      <div class="tick" style="left:33.33%"></div><div class="tick" style="left:66.66%"></div>
+      <div class="dot ${v < 1 ? "low" : ""}" style="left:${pos}%"></div>
+    </div></div>`;
+}
+
+async function loadPortfolio() {
+  const p = await api("/api/portfolio");
+  const sum = $("#summary");
+  if (p.empty) {
+    sum.innerHTML = `<p class="hero">Add your first investment to see how your funds are really doing.</p>
+      <p class="sub">Search for a fund below and enter the amount and date, or import a CSV of your transactions.</p>`;
+    ["#holdingsSec", "#insightsSec", "#upsell"].forEach(s => $(s).classList.add("hidden"));
+    return;
+  }
+  const g = p.gain, neg = g < 0;
+  const pm = p.portfolio_metrics;
+  const hero = p.xirr == null
+    ? `<p class="hero">Your portfolio is worth <strong>${inr(p.value)}</strong>.</p>`
+    : `<p class="hero">Your <strong>${inr(p.value)}</strong> portfolio has ${p.xirr < 0 ? "fallen" : "grown"} at
+      <strong class="${p.xirr < 0 ? "neg" : ""}">${pct(p.xirr)}</strong> a year${p.xirr_partial ? "*" : ""}.</p>`;
+  sum.innerHTML = hero + (p.xirr_partial ? `<p class="note">*Based on funds with full purchase history. Import your CAS to include the rest.</p>` : "") + `
+    <p class="sub">You invested ${inr(p.invested)} and are ${neg ? "down" : "up"} ${inr(Math.abs(g))}.
+      ${pm ? `Held together over the last 3 years, today's mix of funds had a Sortino of ${pm.sortino?.toFixed(2) ?? "–"} and a worst fall of ${pct(pm.max_drawdown)}.` : ""}</p>`;
+
+  $("#upsell").classList.toggle("hidden", !p.per_fund_metrics_locked);
+  $("#holdingsSec").classList.remove("hidden");
+  $("#holdingsBody").innerHTML = p.holdings.map(h => `<tr>
+      <td><div class="fname">${esc(h.name)}</div><div class="fcat">${esc(h.category)}</div></td>
+      <td class="num">${inr(h.value)}</td>
+      <td class="num">${pct(h.weight)}</td>
+      <td class="num ${h.xirr < 0 ? "neg" : ""}">${h.needs_history ? `<span class="tag" title="Imported from Zerodha without purchase dates. Import your CAS to calculate XIRR.">Needs history</span>` : pct(h.xirr)}</td>
+      <td>${p.per_fund_metrics_locked ? `<span class="locked">Available on Pro</span>` : sortinoStrip(h.metrics?.sortino)}</td>
+      <td class="num">${p.per_fund_metrics_locked ? "–" : pct(h.metrics?.max_drawdown)}</td></tr>`).join("");
+
+  $("#insightsSec").classList.toggle("hidden", !p.insights.length);
+  $("#insightsList").innerHTML = p.insights.map(i =>
+    `<div class="insight ${i.severity}"><h3>${esc(i.title)}</h3><p>${esc(i.detail)}</p></div>`).join("");
+}
+
+// ---------- fund search
+let searchTimer;
+$("#fundSearch").addEventListener("input", e => {
+  $("#schemeCode").value = "";
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  if (q.length < 2) return $("#fundResults").classList.add("hidden");
+  searchTimer = setTimeout(async () => {
+    const hits = await api("/api/funds/search?q=" + encodeURIComponent(q)).catch(() => []);
+    const box = $("#fundResults");
+    box.innerHTML = hits.length ? hits.map(h =>
+      `<button type="button" data-code="${esc(h.code)}" data-name="${esc(h.name)}">${esc(h.name)}<div class="fcat">${esc(h.category)}</div></button>`).join("")
+      : `<div class="msg" style="padding:8px 10px">No funds match "${esc(q)}". Try fewer words.</div>`;
+    box.classList.remove("hidden");
+  }, 250);
+});
+$("#fundResults").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  $("#schemeCode").value = b.dataset.code; $("#fundSearch").value = b.dataset.name;
+  $("#fundResults").classList.add("hidden");
+});
+
+// ---------- add / import
+$("#txnForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("#txnMsg"); msg.className = "msg";
+  if (!$("#schemeCode").value) { msg.classList.add("err"); msg.textContent = "Pick a fund from the search results."; return; }
+  try {
+    await api("/api/transactions", { method: "POST", json: {
+      scheme_code: $("#schemeCode").value, txn_date: $("#txnDate").value,
+      amount: parseFloat($("#txnAmount").value),
+      units: $("#txnUnits").value ? parseFloat($("#txnUnits").value) : null } });
+    msg.classList.add("ok"); msg.textContent = "Investment added.";
+    $("#txnAmount").value = ""; $("#txnUnits").value = "";
+    loadPortfolio();
+  } catch (err) { msg.classList.add("err"); msg.textContent = err.message; }
+});
+$("#csvForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("#csvMsg"); msg.className = "msg";
+  const fd = new FormData(); fd.append("file", $("#csvFile").files[0]);
+  try {
+    const r = await api("/api/transactions/import-csv", { method: "POST", body: fd });
+    msg.classList.add(r.errors.length ? "err" : "ok");
+    msg.innerHTML = `Imported ${r.added} transaction${r.added === 1 ? "" : "s"}.` + (r.errors.length ? "<br>" + r.errors.map(esc).join("<br>") : "");
+    loadPortfolio();
+  } catch (err) { msg.classList.add("err"); msg.textContent = err.message; }
+});
+
+// ---------- plans
+const FEATURES = e => [
+  e.per_fund_metrics ? "Ratios for every fund vs benchmark" : "Portfolio-level ratios",
+  `${e.ai_questions} AI questions a month`,
+  e.monthly_report ? "Monthly portfolio report" : "No monthly report",
+  e.alerts ? "Alerts when a fund's ratios slip" : "No alerts"];
+function renderPlans() {
+  $("#plansGrid").innerHTML = Object.entries(me.plans).map(([name, e]) => `
+    <div class="plan-card ${name === me.plan ? "current" : ""}">
+      <h3>${name}</h3><div class="price">${e.price_month ? "₹" + e.price_month + "/month" : "Free"}</div>
+      <ul>${FEATURES(e).map(f => `<li>${f}</li>`).join("")}</ul>
+      ${name === me.plan ? `<span class="locked">Your current plan</span>` :
+        `<button class="btn ${e.price_month ? "primary" : ""}" data-plan="${name}" type="button">Switch to ${name}</button>`}
+    </div>`).join("");
+}
+$("#plansGrid").addEventListener("click", async e => {
+  const b = e.target.closest("button[data-plan]"); if (!b) return;
+  await api("/api/billing/dev-activate", { method: "POST", json: { plan: b.dataset.plan } });
+  await boot(); $("#plansSec").classList.remove("hidden");
+});
+const openPlans = () => { $("#plansSec").classList.remove("hidden"); $("#plansSec").scrollIntoView({ behavior: "smooth" }); };
+$("#planPill").onclick = openPlans; $("#upsellBtn").onclick = openPlans;
+
+// ---------- connected accounts
+async function loadBrokers() {
+  const b = await api("/api/brokers");
+  const z = b.zerodha, st = $("#zState"), act = $("#zActions");
+  if (!z.available) { st.className = "state"; st.textContent = "Not set up on this server yet."; act.innerHTML = ""; return; }
+  if (!z.connected) {
+    st.className = "state"; st.textContent = "Not connected";
+    act.innerHTML = `<button class="btn primary" type="button" data-z="connect">Connect Zerodha</button>`;
+  } else if (z.status === "expired") {
+    st.className = "state off"; st.textContent = "Session expired. Reconnect to pick up new purchases.";
+    act.innerHTML = `<button class="btn primary" type="button" data-z="connect">Reconnect Zerodha</button>
+      <button class="btn link" type="button" data-z="disconnect">Disconnect</button>`;
+  } else {
+    st.className = "state on";
+    st.textContent = "Connected" + (z.last_synced_at ? `, last synced ${new Date(z.last_synced_at.replace(" ", "T") + "Z").toLocaleString("en-IN")}` : "");
+    act.innerHTML = `<button class="btn" type="button" data-z="sync">Sync now</button>
+      <button class="btn link" type="button" data-z="disconnect">Disconnect</button>`;
+  }
+}
+function banner(text, err) {
+  const b = $("#banner"); b.textContent = text; b.className = "banner" + (err ? " err" : "");
+}
+$("#zActions").addEventListener("click", async e => {
+  const a = e.target.closest("button")?.dataset.z; if (!a) return;
+  try {
+    if (a === "connect") { location.href = (await api("/api/brokers/zerodha/login")).url; return; }
+    if (a === "disconnect") { await api("/api/brokers/zerodha", { method: "DELETE" }); banner("Zerodha disconnected. Imported funds stay in your portfolio."); }
+    if (a === "sync") {
+      const r = await api("/api/brokers/zerodha/sync", { method: "POST" });
+      banner(`Synced ${r.matched} fund${r.matched === 1 ? "" : "s"} from Zerodha` +
+        (r.opened + r.adjusted ? `: ${r.opened} added, ${r.adjusted} updated.` : ". No changes.") +
+        (r.unmatched.length ? ` Couldn't match: ${r.unmatched.join(", ")}.` : ""), r.unmatched.length > 0);
+    }
+  } catch (err) { banner(err.message, true); }
+  loadBrokers(); loadPortfolio();
+});
+$("#casForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("#casMsg"); msg.className = "msg"; msg.textContent = "Reading statement…";
+  const fd = new FormData(); fd.append("file", $("#casFile").files[0]); fd.append("password", $("#casPwd").value);
+  try {
+    const r = await api("/api/import/cas", { method: "POST", body: fd });
+    $("#casPwd").value = "";
+    msg.classList.add(r.skipped.length ? "err" : "ok");
+    msg.innerHTML = `Imported ${r.transactions} transactions across ${r.funds} funds.` + (r.skipped.length ? "<br>" + r.skipped.map(esc).join("<br>") : "");
+    loadPortfolio();
+  } catch (err) { msg.classList.add("err"); msg.textContent = err.message; }
+});
+// ---------- automatic statement import
+const STATUS_LABEL = { imported: "Imported", needs_password: "Needs password", failed: "Couldn't read" };
+async function loadMail() {
+  const m = await api("/api/mail");
+  $("#pwdState").textContent = m.password_saved ? "Saved (encrypted)." : "Not saved. Automatic imports wait until you add it.";
+  $("#pwdDelete").classList.toggle("hidden", !m.password_saved);
+
+  const g = m.gmail, st = $("#gState"), act = $("#gActions");
+  if (!g.available) { st.className = "state"; st.textContent = "Not set up on this server yet."; act.innerHTML = ""; }
+  else if (g.connected) {
+    st.className = "state on";
+    st.textContent = `Connected as ${g.email}` + (g.last_checked ? `, checked ${new Date(g.last_checked.replace(" ", "T") + "Z").toLocaleString("en-IN")}` : "");
+    act.innerHTML = `<button class="btn" type="button" data-g="check">Check now</button><button class="btn link" type="button" data-g="disconnect">Disconnect</button>`;
+  } else {
+    st.className = g.status === "expired" ? "state off" : "state";
+    st.textContent = g.status === "expired" ? "Access was removed. Reconnect to keep importing." : "Not connected";
+    act.innerHTML = `<button class="btn primary" type="button" data-g="connect">${g.status === "expired" ? "Reconnect" : "Connect"} Gmail</button>`;
+  }
+
+  $("#fwdAddr").textContent = m.forwarding.address;
+  $("#fwdSenders").textContent = m.forwarding.senders.slice(0, 3).join(", ") + " and similar";
+  $("#fwdConfirm").textContent = m.forwarding.confirmation || "";
+
+  $("#importLogWrap").classList.toggle("hidden", !m.recent.length);
+  $("#importLog").innerHTML = m.recent.map(r => `<li><span>${esc(r.subject || "Statement")} <span class="fcat">via ${r.channel === "gmail" ? "Gmail" : "forwarding"}</span></span>
+    <span class="st-${r.status}">${STATUS_LABEL[r.status] || r.status}${r.detail ? ": " + esc(r.detail) : ""}</span></li>`).join("");
+}
+$("#pwdForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("#pwdMsg"); msg.className = "msg";
+  try {
+    await api("/api/mail/password", { method: "PUT", json: { password: $("#savedPwd").value, consent: $("#pwdConsent").checked } });
+    $("#savedPwd").value = ""; msg.classList.add("ok"); msg.textContent = "Password saved.";
+    const g = (await api("/api/mail")).gmail;
+    if (g.connected) { await api("/api/mail/gmail/check", { method: "POST" }); loadPortfolio(); }
+  } catch (err) { msg.classList.add("err"); msg.textContent = err.message; }
+  loadMail();
+});
+$("#pwdDelete").onclick = async () => { await api("/api/mail/password", { method: "DELETE" }); $("#pwdMsg").textContent = "Saved password deleted."; loadMail(); };
+$("#gActions").addEventListener("click", async e => {
+  const a = e.target.closest("button")?.dataset.g; if (!a) return;
+  try {
+    if (a === "connect") { location.href = (await api("/api/mail/gmail/login")).url; return; }
+    if (a === "disconnect") { await api("/api/mail/gmail", { method: "DELETE" }); banner("Gmail disconnected and access revoked. Imported funds stay in your portfolio."); }
+    if (a === "check") {
+      const r = await api("/api/mail/gmail/check", { method: "POST" });
+      banner(r.found ? `Found ${r.found} new statement${r.found === 1 ? "" : "s"}: ${r.imported} imported` +
+        (r.needs_password ? `, ${r.needs_password} waiting for your statement password` : "") + "." : "No new statements.", r.needs_password > 0);
+    }
+  } catch (err) { banner(err.message, true); }
+  loadMail(); loadPortfolio();
+});
+$("#copyAddr").onclick = async () => {
+  try { await navigator.clipboard.writeText($("#fwdAddr").textContent); $("#copyAddr").textContent = "Copied"; setTimeout(() => $("#copyAddr").textContent = "Copy", 1500); } catch {}
+};
+
+function readRedirectParams() {
+  const q = new URLSearchParams(location.search);
+  if (q.get("connected") === "zerodha") banner("Zerodha connected and your mutual fund holdings are imported.");
+  if (q.get("connected") === "gmail") banner("Gmail connected. Statements found in your inbox are listed under Recent automatic imports.");
+  if (q.get("broker_error")) banner(q.get("broker_error"), true);
+  if (q.toString()) history.replaceState(null, "", "/");
+}
+
+// ---------- boot
+async function boot() {
+  if (!token) return show("auth");
+  try {
+    me = await api("/api/me");
+    $("#planName").textContent = me.plan;
+    renderPlans(); show("app");
+    $("#txnDate").max = new Date().toISOString().slice(0, 10);
+    readRedirectParams();
+    await Promise.all([loadPortfolio(), loadBrokers(), loadMail()]);
+  } catch (err) { if (err.status === 401) { token = null; show("auth"); } }
+}
+boot();
+</script>
+</body>
+</html>

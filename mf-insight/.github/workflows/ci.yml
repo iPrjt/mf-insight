@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    env:
+      MF_OFFLINE: "1"          # tests use demo data; no network or secrets needed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -r requirements.txt ruff
+      - name: Lint (errors only)
+        run: ruff check --select E9,F63,F7,F82,F401,F841 .
+      - name: Test
+        run: python -m pytest -q
