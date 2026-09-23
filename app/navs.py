@@ -45,8 +45,20 @@ def scheme_master() -> dict[str, dict]:
     for s in AmfiLatest().fetch():
         cat = s.category.split("(", 1)[-1].rstrip(")") if "(" in s.category else s.category
         isins = [i for i in (s.isin_growth, s.isin_reinvest) if i and i != "-"]
-        out[s.code] = {"code": s.code, "name": s.name, "category": cat, "amc": s.amc, "isins": isins}
+        out[s.code] = {"code": s.code, "name": s.name, "category": cat, "amc": s.amc, "isins": isins,
+                       "nav": s.nav, "nav_date": s.nav_date}
     return out
+
+
+def with_latest(nav: pd.Series, meta: dict) -> pd.Series:
+    """mfapi.in lags AMFI by a few days; append AMFI's latest NAV when it's newer."""
+    try:
+        when = pd.Timestamp(pd.to_datetime(meta["nav_date"], format="%d-%b-%Y"))
+    except (KeyError, ValueError, TypeError):
+        return nav
+    if nav.empty or when <= nav.index[-1] or not meta.get("nav"):
+        return nav
+    return pd.concat([nav, pd.Series([float(meta["nav"])], index=[when], name=nav.name)])
 
 
 @lru_cache(maxsize=1)
@@ -79,7 +91,7 @@ def nav_history(code: str) -> pd.Series:
     nav, _ = MfapiHistory().fetch(code)
     if nav.empty:
         raise KeyError(code)
-    return nav
+    return with_latest(nav, scheme_master().get(code, {}))
 
 
 def benchmark() -> pd.Series | None:

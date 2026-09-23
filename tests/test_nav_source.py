@@ -64,3 +64,13 @@ def test_cached_get_retries_then_uses_stale_copy(tmp_path, monkeypatch):
     monkeypatch.setattr(nav_source.requests, "get",
                         lambda url, timeout: (_ for _ in ()).throw(requests.ConnectionError()))
     assert nav_source._cached_get("u", "x.txt") == "Children’s Fund"
+
+
+def test_amfi_latest_nav_appended_when_mfapi_lags():
+    import pandas as pd
+    from app.navs import with_latest
+    nav = pd.Series([89.1, 89.8569], index=pd.to_datetime(["2026-09-17", "2026-09-18"]), name="nav")
+    fresh = with_latest(nav, {"nav": 90.25, "nav_date": "23-Sep-2026"})
+    assert fresh.index[-1] == pd.Timestamp("2026-09-23") and fresh.iloc[-1] == 90.25 and len(fresh) == 3
+    assert with_latest(nav, {"nav": 1.0, "nav_date": "18-Sep-2026"}) is nav   # not newer
+    assert with_latest(nav, {}) is nav                                          # demo / unknown fund
