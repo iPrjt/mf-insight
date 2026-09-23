@@ -334,7 +334,10 @@ async function loadPortfolio() {
       <strong class="${p.xirr < 0 ? "neg" : ""}">${pct(p.xirr)}</strong> a year${p.xirr_partial ? "*" : ""}.</p>`;
   sum.innerHTML = hero + (p.xirr_partial ? `<p class="note">*Based on funds with full purchase history. Import your CAS to include the rest.</p>` : "") + `
     <p class="sub">You invested ${inr(p.invested)} and are ${neg ? "down" : "up"} ${inr(Math.abs(g))}.
-      ${pm ? `Held together over the last 3 years, today's mix of funds had a Sortino of ${pm.sortino?.toFixed(2) ?? "–"} and a worst fall of ${pct(pm.max_drawdown)}.` : ""}</p>`;
+      ${pm ? `Held together over the last 3 years, today's mix of funds had a Sortino of ${pm.sortino?.toFixed(2) ?? "–"} and a worst fall of ${pct(pm.max_drawdown)}.` : ""}</p>` +
+    (p.lifetime_xirr != null ? `<p class="note">Including ${p.exited_funds} fund${p.exited_funds === 1 ? "" : "s"} you've fully sold,
+      everything you've invested since ${p.lifetime_since} has ${p.lifetime_xirr < 0 ? "fallen" : "grown"} at ${pct(p.lifetime_xirr)} a year.
+      The sold funds ${p.exited_gain < 0 ? "lost" : "gained"} ${inr(Math.abs(p.exited_gain))}.</p>` : "");
 
   $("#upsell").classList.toggle("hidden", !p.per_fund_metrics_locked);
   $("#holdingsSec").classList.remove("hidden");

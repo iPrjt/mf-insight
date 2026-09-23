@@ -111,3 +111,15 @@ def test_real_gmail_client_parsing():
     mails = g.find_statements("tok", {"seen"})
     assert len(mails) == 1 and mails[0].pdfs == [pdf] and mails[0].subject == "Your CAS"
     assert "gmail.readonly" in GmailClient().login_url("s") and "access_type=offline" in GmailClient().login_url("s")
+
+
+def test_missing_cas_library_is_not_reported_as_bad_pdf(monkeypatch):
+    import pytest
+    from app import cas, statements
+
+    def no_lib(fileobj, password):
+        raise ModuleNotFoundError("No module named 'casparser'")
+
+    monkeypatch.setattr(cas, "parse_pdf", no_lib)
+    with pytest.raises(ImportError):
+        statements.process_pdf(1, b"%PDF-1.4", "pw")

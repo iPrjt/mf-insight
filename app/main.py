@@ -226,6 +226,10 @@ def portfolio(user=Depends(current_user)):
     estimated = {r["scheme_code"] for r in src if r["est"]}
     real_txns = [t for t in p.transactions if t.scheme_code not in estimated]
     holdings = p.holdings()
+    # Funds fully sold still count for lifetime returns, but not for "your ₹X portfolio".
+    held = {h.scheme_code for h in holdings}
+    current_txns = [t for t in real_txns if t.scheme_code in held]
+    exited_txns = [t for t in real_txns if t.scheme_code not in held]
     weights = p.weights()
     total = sum(h.value for h in holdings)
     invested = sum(h.invested for h in holdings)
@@ -249,10 +253,16 @@ def portfolio(user=Depends(current_user)):
         "value": total,
         "invested": invested,
         "gain": total - invested,
-        "xirr": (M.xirr([(t.txn_date, -t.amount) for t in real_txns] +
+        "xirr": (M.xirr([(t.txn_date, -t.amount) for t in current_txns] +
                         [(today, sum(h.value for h in holdings if h.scheme_code not in estimated))])
-                 if real_txns else None),
-        "xirr_partial": bool(estimated) and bool(real_txns),
+                 if current_txns else None),
+        "xirr_partial": bool(estimated) and bool(current_txns),
+        "exited_funds": len({t.scheme_code for t in exited_txns}),
+        "exited_gain": -sum(t.amount for t in exited_txns),
+        "lifetime_xirr": (M.xirr([(t.txn_date, -t.amount) for t in real_txns] +
+                                 [(today, sum(h.value for h in holdings if h.scheme_code not in estimated))])
+                          if exited_txns else None),
+        "lifetime_since": min(t.txn_date for t in real_txns).year if real_txns else None,
         "portfolio_metrics": port_m,
         "per_fund_metrics_locked": not ent["per_fund_metrics"],
         "holdings": [{

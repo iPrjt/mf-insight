@@ -118,3 +118,28 @@ def test_real_kite_client_request_shape():
     hs = k.mf_holdings("AT")
     assert calls["get"][1]["headers"]["Authorization"] == "token key:AT"
     assert len(hs) == 1 and hs[0].isin == "INF879O01027"
+
+
+def test_two_identical_sips_on_same_day_both_kept():
+    h = auth("twosip@example.com")
+    d = date.today() - timedelta(days=200)
+    rows = [{"scheme_code": "900003", "txn_date": d, "units": 42.241, "amount": 500},
+            {"scheme_code": "900003", "txn_date": d, "units": 42.241, "amount": 500}]
+    first = statements.import_rows(_uid(h), rows)
+    again = statements.import_rows(_uid(h), rows)
+    assert first["transactions"] == 2
+    assert again["transactions"] == 0 and again["already_imported"] == 2
+
+
+def test_headline_xirr_excludes_fully_sold_funds():
+    h = auth("exited@example.com")
+    start = date.today() - timedelta(days=900)
+    rows = [{"scheme_code": "900004", "txn_date": start, "units": 100, "amount": 1000},
+            {"scheme_code": "900004", "txn_date": start + timedelta(days=365), "units": -100, "amount": -3000},
+            {"scheme_code": "900005", "txn_date": start + timedelta(days=500), "units": 100, "amount": 1000}]
+    statements.import_rows(_uid(h), rows)
+    p = client.get("/api/portfolio", headers=h).json()
+    assert [x["scheme_code"] for x in p["holdings"]] == ["900005"]
+    assert p["xirr"] == pytest.approx(p["holdings"][0]["xirr"], abs=1e-6)
+    assert p["exited_funds"] == 1 and p["exited_gain"] == pytest.approx(2000)
+    assert p["lifetime_xirr"] > p["xirr"]
