@@ -63,7 +63,7 @@ def process_pdf(user_id: int, pdf: bytes, password: str) -> dict:
     except Exception as e:
         msg = str(e).lower()
         if "password" in msg or "decrypt" in msg:
-            raise StatementError("password", "The PDF password is incorrect. It's usually your PAN in capital letters.")
+            raise StatementError("password", "The PDF password is incorrect. Use the password you set when requesting the statement (for NSDL or CDSL statements, your PAN in capital letters).")
         log.warning("CAS parse failed: %s: %s", type(e).__name__, e)
         raise StatementError("unreadable", "This PDF couldn't be read as a CAS.")
     rows, skipped = cas.extract_transactions(data)

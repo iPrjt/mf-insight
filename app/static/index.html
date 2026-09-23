@@ -184,7 +184,7 @@ ol.howto{margin:6px 0 0;padding-left:20px;color:var(--muted);font-size:.9rem}
         <p class="state">Import your statement</p>
         <p class="note" style="margin-top:0">Groww doesn't share mutual fund holdings with other apps, so import your Consolidated Account Statement instead. It covers every fund you own, with full purchase history. Download a detailed CAS from CAMS, KFintech or MF Central.</p>
         <label for="casFile">Statement PDF</label><input id="casFile" type="file" accept=".pdf" required>
-        <label for="casPwd">PDF password</label><input id="casPwd" type="password" required placeholder="Usually your PAN in capitals" autocomplete="off">
+        <label for="casPwd">PDF password</label><input id="casPwd" type="password" required placeholder="The password you set when requesting it (PAN for NSDL/CDSL)" autocomplete="off">
         <p class="note">The password is only used to open this file. It isn't saved.</p>
         <button class="btn primary" type="submit">Import statement</button>
         <div id="casMsg" class="msg"></div>
@@ -200,7 +200,7 @@ ol.howto{margin:6px 0 0;padding-left:20px;color:var(--muted);font-size:.9rem}
       <p class="state" id="pwdState" style="margin:0 0 6px;font-size:.88rem;color:var(--muted)"></p>
       <div class="row">
         <div><label for="savedPwd">Password used to open your statements</label>
-        <input id="savedPwd" type="password" autocomplete="off" placeholder="Usually your PAN in capitals"></div>
+        <input id="savedPwd" type="password" autocomplete="off" placeholder="The password you set when requesting it (PAN for NSDL/CDSL)"></div>
         <div style="flex:0 0 auto"><button class="btn primary" type="submit">Save</button></div>
       </div>
       <label class="checkbox"><input type="checkbox" id="pwdConsent"> <span>Store this password encrypted so MF Insight can open statements automatically. You can delete it any time.</span></label>
